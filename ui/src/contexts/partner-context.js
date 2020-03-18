@@ -2,19 +2,20 @@ import React, { useEffect } from 'react';
 import PropTypes from 'prop-types';
 import { useQuery, useMutation } from '@apollo/react-hooks';
 import {
-  GET_ALLPARTNERS_QUERY,
   ADD_PARTNER,
   REMOVE_PARTNER,
-  GET_PARTNER_UPDATE,
+  ORGANIZATION_PARTNER_LIST_UPDATE,
+  GET_ALL_ORGANIZATIONS,
 } from '../graphql/partners';
 
 export const PartnerContext = React.createContext();
 let partnerListener;
 
-const partnerUpdateQuery = (prev, { subscriptionData }) => {
+const getAllOrganizationsUpdateQuery = (prev, { subscriptionData }) => {
   if (!subscriptionData.data) return prev;
-  const { serverSettingsUpdate } = subscriptionData.data;
-  return { prev, getServerSettings: serverSettingsUpdate };
+  const { organizationPartnerListUpdate } = subscriptionData.data;
+  const { organizations, partners } = organizationPartnerListUpdate;
+  return { organizations, partners };
 }
 
 export const PartnerProvider = ({ children }) => {
@@ -23,7 +24,7 @@ export const PartnerProvider = ({ children }) => {
     data,
     error,
     loading,
-  } = useQuery(GET_ALLPARTNERS_QUERY);
+  } = useQuery(GET_ALL_ORGANIZATIONS);
 
   const options = { fetchPolicy: 'no-cache' };
   const [addPartner] = useMutation(ADD_PARTNER, options);
@@ -32,19 +33,22 @@ export const PartnerProvider = ({ children }) => {
   useEffect(() => {
     if (!partnerListener) {
       partnerListener = subscribeToMore({
-        document: GET_PARTNER_UPDATE,
-        updateQuery: partnerUpdateQuery,
+        document: ORGANIZATION_PARTNER_LIST_UPDATE,
+        updateQuery: getAllOrganizationsUpdateQuery,
         fetchPolicy: 'no-cache',
       });
     }
   }, [subscribeToMore]);
 
   if (loading) return <h1>Loading...</h1>;
-  if (error) return <h1>Error</h1>;
+  if (error) {
+    console.log('ERROR', error);
+    return <h1>Error</h1>;
+  }
 
   return (
     <PartnerContext.Provider value={{
-      partners: data.myPartners,
+      partners: data.partners,
       organizations: data.organizations,
       addPartner,
       removePartner,

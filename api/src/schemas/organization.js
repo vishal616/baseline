@@ -4,18 +4,30 @@ export default gql`
   extend type Query {
     organization(address: Address!): Organization
     organizations: [Organization]
-    organizationList: Organizations
+    organizationList(start: Int!, count: Int!): Organizations
     registeredOrganization(address: Address!): RegisteredOrganization
     organizationCount: Int!
     orgRegistryAddress(registrarAddress: Address!, managerAddress: Address!): Address!
+    partner(address: Address!): Organization
+    partners: [Organization]
+    getPartnerByIdentity(identity: String!): Organization
   }
 
   extend type Mutation {
     registerOrganization(input: RegisterOrganization!): OrganizationPayload
+    addPartner(input: AddPartnerInput!): PartnerPayload
+    removePartner(input: RemovePartnerInput!): PartnerPayload
   }
 
   extend type Subscription {
     newOrganization: Organization
+    organizationPartnerListUpdate: OrganizationList
+    getPartnerUpdate: PartnerPayload
+  }
+
+  type OrganizationList {
+    organizations: [Organization]
+    partners: [Organization]
   }
 
   type Organization {
@@ -24,6 +36,7 @@ export default gql`
     role: Int!
     identity: String!
     zkpPublicKey: String!
+    isPartner: Boolean!
   }
 
   input RegisterOrganization {
@@ -40,11 +53,12 @@ export default gql`
   }
 
   type RegisteredOrganization {
-    address: Address!
     name: String!
+    address: Address!
     role: Int!
     identity: String!
     zkpPublicKey: String!
+    isPartner: Boolean!
   }
 
   type Organizations {
@@ -53,5 +67,26 @@ export default gql`
     roles: [Int!]!
     identities: [String!]!
     zkpPublicKeys: [String!]!
+    isPartner: [Boolean]!
+  }
+
+  type Partners {
+    addresses: [Address!]!
+    names: [String!]!
+    roles: [Int!]!
+    identities: [String!]!
+    isPartner: [Boolean]!
+  }
+
+  input AddPartnerInput {
+    address: Address!
+  }
+
+  input RemovePartnerInput {
+    address: Address!
+  }
+
+  type PartnerPayload {
+    partner: Organization
   }
 `;

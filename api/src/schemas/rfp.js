@@ -42,7 +42,7 @@ const RFPSchema = gql`
   }
 
   type Recipient {
-    partner: Partner!
+    partner: Organization!
     origination: Origination
     signature: RFPSignature
   }

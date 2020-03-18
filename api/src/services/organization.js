@@ -8,6 +8,7 @@ import {
   parseBigNumbersToIntArray,
 } from '../utils/ethers';
 import { getContractJson } from './contract';
+import { saveOrganization } from '../db/models/baseline/organizations';
 import db from '../db';
 
 export const assignManager = async (fromAddress, toAddress) => {
@@ -139,13 +140,6 @@ export const getInterfaceAddress = async (
   ).getInterfaceImplementer(managerAddress, interfaceName);
 
   return interfaceAddress;
-};
-
-export const saveOrganization = async input => {
-  const organization = await db
-    .collection('organization')
-    .updateOne({ _id: input.address }, { $set: input }, { upsert: true });
-  return organization;
 };
 
 export const saveOrganizations = async () => {

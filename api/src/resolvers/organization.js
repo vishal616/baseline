@@ -1,28 +1,25 @@
 import { pubsub } from '../subscriptions';
 import {
+  getInterfaceAddress,
   registerToOrgRegistry,
   listOrganizations,
-  getRegisteredOrganization,
   getOrganizationCount,
-  getInterfaceAddress,
+  getRegisteredOrganization
 } from '../services/organization';
-import { getServerSettings } from '../utils/serverSettings';
-import db from '../db';
 
-const NEW_ORG = 'NEW_ORG';
+import { getServerSettings } from '../db/models/baseline/server/settings';
 
-const getOrganizationById = async address => {
-  const organization = await db.collection('organization').findOne({ _id: address });
-  return organization;
-};
+import {
+  getOrganizationById,
+  getAllOrganizations,
+  getAllPartners,
+  setPartner,
+  getPartnerByAddress,
+  getPartnerByIdentity,
+} from '../db/models/baseline/organizations';
 
-const getAllOrganizations = async () => {
-  const organizations = await db
-    .collection('organization')
-    .find({})
-    .toArray();
-  return organizations;
-};
+const PARTNERS_UPDATE = 'PARTNERS_UPDATE';
+const ORGANIZATION_PARTNER_LIST_UPDATE = 'ORGANIZATION_PARTNER_LIST_UPDATE';
 
 export default {
   Query: {
@@ -30,10 +27,11 @@ export default {
       return getOrganizationById(args.address).then(res => res);
     },
     organizations() {
+      console.log('getting all organizations');
       return getAllOrganizations();
     },
-    organizationList() {
-      return listOrganizations();
+    organizationList(_parent, args) {
+      return listOrganizations(args.start, args.count);
     },
     registeredOrganization(_parent, args) {
       return getRegisteredOrganization(args.address);
@@ -44,6 +42,15 @@ export default {
     orgRegistryAddress(_parent, args) {
       return getInterfaceAddress(args.registrarAddress, args.managerAddress, 'IOrgRegistry');
     },
+    partner(_parent, args) {
+      return getPartnerByAddress(args.address).then(res => res);
+    },
+    getPartnerByIdentity(_parent, args) {
+      return getPartnerByIdentity(args.identity).then(res => res);
+    },
+    partners() {
+      return getAllPartners();
+    },
   },
   Organization: {
     name: root => root.name,
@@ -53,23 +60,47 @@ export default {
   Mutation: {
     registerOrganization: async (_root, args) => {
       const settings = await getServerSettings();
-      const { zkpPublicKey, messengerKey, address } = settings.organization;
+      const { organizationWhisperKey, organizationAddress } = settings;
 
       const orgRegistryTxHash = await registerToOrgRegistry(
-        address,
+        organizationAddress,
         args.organizationName,
         args.organizationRole,
-        messengerKey,
-        zkpPublicKey,
+        organizationWhisperKey,
       );
 
       console.log('Registering Organization with tx:', orgRegistryTxHash);
     },
+    addPartner: async (_parent, args) => {
+      const { address } = args.input;
+      await setPartner(address, true);
+      const partners = await getAllPartners();
+      const organizations = await getAllOrganizations();
+      pubsub.publish(ORGANIZATION_PARTNER_LIST_UPDATE, {
+        organizationPartnerListUpdate: { organizations, partners },
+      });
+      return partners;
+    },
+    removePartner: async (_parent, args) => {
+      const { address } = args.input;
+      await setPartner(address, false);
+      const partners = await getAllPartners();
+      const organizations = await getAllOrganizations();
+      pubsub.publish(ORGANIZATION_PARTNER_LIST_UPDATE, {
+        organizationPartnerListUpdate: { organizations, partners },
+      });
+      return partners;
+    },
   },
   Subscription: {
-    newOrganization: {
+    organizationPartnerListUpdate: {
       subscribe: () => {
-        return pubsub.asyncIterator(NEW_ORG);
+        return pubsub.asyncIterator(ORGANIZATION_PARTNER_LIST_UPDATE);
+      },
+    },
+    getPartnerUpdate: {
+      subscribe: () => {
+        return pubsub.asyncIterator(PARTNERS_UPDATE);
       },
     },
   },

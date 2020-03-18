@@ -32,7 +32,7 @@ const MSASchema = gql`
     whisperPublicKeySupplier: String!
     buyerSignatureStatus: Boolean!
     supplierSignatureStatus: Boolean!
-    supplierDetails: Partner,
+    supplierDetails: Organization,
     rfpId: String!
   }
 

@@ -1,10 +1,9 @@
 import mongoose from 'mongoose';
 
-/**
- * Notes:
- */
-
 const OrganizationsSchema = new mongoose.Schema({
+  _id: {
+    type: String,
+  },
   name: {
     type: String,
     required: true,
@@ -21,22 +20,26 @@ const OrganizationsSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
-  partner: {
+  zkpPublicKey: {
+    type: String,
+    required: true,
+  },
+  isPartner: {
     type: Boolean,
     required: true,
+    default: false,
   },
 });
 
 const Organization = mongoose.model('organizations', OrganizationsSchema);
 
-// Organization
 export const getOrganizationById = async address => {
   const organization = await Organization.findOne({ _id: address });
   return organization;
 };
 
 export const getAllOrganizations = async () => {
-  const organizations = await Organization.find({}).toArray();
+  const organizations = await Organization.find({});
   return organizations;
 };
 
@@ -46,37 +49,37 @@ export const saveOrganization = async input => {
     { $set: input },
     { upsert: true },
   );
+  console.log('Adding Organization:', input);
   return organization;
 };
 
-// Partner
-export const getPartnerById = async address => {
-  const partner = await Organization.find({ _id: address, partner: true });
+export const getPartnerByAddress = async address => {
+  const partner = await Organization.find({ _id: address, isPartner: true });
   return partner;
 };
 
 export const getPartnerByIdentity = async identity => {
-  const partner = await Organization.findOne({ sender: identity });
-  return partner;
+  const partner = await Organization.findOne({ identity: identity, isPartner: true });
+  if (!partner) {
+    console.log(`Organization may not be set as partner: ${identity}`);
+  }
+  return partner || null;
 };
 
 export const getAllPartners = async () => {
-  const partners = await Organization.find({ partner: true }).toArray();
+  const partners = await Organization.find({ isPartner: true });
   return partners;
 };
 
-export const setPartner = async (input, state = true) => {
-  const { address } = input;
-  const partner = await Organization.updateOne(
-    { _id: address, partner: state },
-    { $set: input },
-    { upsert: true },
-  );
-  return partner;
+export const setPartner = async (address, state = true) => {
+  const organization = await Organization.findById(address);
+  organization.isPartner = state;
+  await organization.save();
+  return organization;
 };
 
 export default {
-  getPartnerById,
+  getPartnerByAddress,
   getPartnerByIdentity,
   getAllPartners,
   setPartner,

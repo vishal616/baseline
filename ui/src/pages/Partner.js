@@ -15,7 +15,7 @@ import Divider from '@material-ui/core/Divider';
 import SearchIcon from '@material-ui/icons/Search';
 import CloseIcon from '@material-ui/icons/Close';
 import ExpandMoreIcon from '@material-ui/icons/ExpandMore';
-import NoticesTable from '../components/NoticeList/NoticesTable';
+import DataTable from '../components/DataTable/DataTable';
 import { PartnerContext } from '../contexts/partner-context';
 import NoticeLayout from '../components/NoticeLayout';
 
@@ -146,8 +146,8 @@ const SearchPartners = ({ actions, values }) => {
 
 const SortPartnerTable = ({ actions, values }) => {
   const classes = useStyles();
-  const { setSearch, setCategory, setRole, setSort } = actions;
-  const { search, category, role, sort } = values;
+  const { setSearch, setCategory, setRole } = actions;
+  const { search, category, role } = values;
 
   return (
     <div>
@@ -192,27 +192,6 @@ const SortPartnerTable = ({ actions, values }) => {
                 Carrier
               </ToggleButton>
             </ToggleButtonGroup>
-
-            <div className={classes.filterPartners}>
-              <FormControl variant="outlined" className={classes.formControl}>
-                <Select
-                  className={classes.filterInput}
-                  value={sort}
-                  onChange={(event, value) => {
-                    console.log(event, value);
-                    setSort(event.target.value);
-                  }}
-                  displayEmpty={false}
-                  IconComponent={() => <ExpandMoreIcon className={classes.expandIcon} />}
-                >
-                  <MenuItem value="">
-                    <em>None</em>
-                  </MenuItem>
-                  <MenuItem value="recent">Recently Added</MenuItem>
-                  <MenuItem value="frequent">Most Frequented</MenuItem>
-                </Select>
-              </FormControl>
-            </div>
         </div>
       </Grid>
       <Divider />
@@ -220,17 +199,18 @@ const SortPartnerTable = ({ actions, values }) => {
   )
 }
 
-const SelectPartner = ({ partners, row, addPartner, removePartner }) => {
-  const checked = false;
-  const onToggle = (event) => {
-    console.log(event.target.value);
+const PartnerCheckbox = ({ row, addPartner, isPartner, removePartner }) => {
+  const onToggle = async (event) => {
+    if(isPartner){
+      await removePartner({ variables: { input: { address: event.target.value }}});
+    }else{
+      await addPartner({ variables: { input: { address: event.target.value }}});
+    }
   }
   
-  console.log(partners, row);
-
   return (
     <Checkbox
-      checked={checked}
+      checked={isPartner}
       onChange={onToggle}
       value={row.address}
       inputProps={{ 'aria-label': 'primary checkbox' }}
@@ -238,18 +218,27 @@ const SelectPartner = ({ partners, row, addPartner, removePartner }) => {
   );
 }
 
-const Partner = () => {
+const PartnerList = () => {
   const classes = useStyles();
   const { partners, organizations, addPartner, removePartner } = useContext(PartnerContext);
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('registry');
   const [role, setRole] = useState(0);
-  const [sort, setSort] = useState('recent');
   let items = category === 'registry' ? organizations : partners;
 
+  // Filter by role
   if(role) {
     items = filter(items, { role }, []);
   }
+
+  // Filter by search text
+  if(search) {
+    items = filter(items, item => {
+      const lowercaseName = item.name.toLowerCase();
+      return lowercaseName.indexOf(search.toLowerCase())>-1;
+    });
+  }
+
   const notices = items;
 
   const columns = [
@@ -257,10 +246,10 @@ const Partner = () => {
       name: 'add',
       label: 'Add/Remove',
       formatter: (_value, {row}) => (
-        <SelectPartner
+        <PartnerCheckbox
           addPartner={addPartner}
           removePartner={removePartner}
-          partners={partners}
+          isPartner={row.isPartner}
           row={row}
         />
       ),
@@ -295,13 +284,13 @@ const Partner = () => {
 
   return (
     <NoticeLayout selected="partners">
-      <SortPartnerTable actions={{ setSearch, setCategory, setRole, setSort }} values={{ search, category, role, sort }} />
+      <SortPartnerTable actions={{ setSearch, setCategory, setRole }} values={{ search, category, role }} />
       <Typography variant="h2" className={classes.companyCount}>
         {companyCount} Companies
       </Typography>
       <Divider />
-      <NoticesTable
-        notices={notices}
+      <DataTable
+        data={notices}
         columns={columns}
         options={{
           key: 'name',
@@ -311,4 +300,4 @@ const Partner = () => {
   );
 };
 
-export default Partner;
+export default PartnerList;

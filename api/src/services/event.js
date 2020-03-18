@@ -1,7 +1,7 @@
 import { utils } from 'ethers';
 import { getServerSettings } from '../utils/serverSettings';
 import { getContract } from '../utils/ethers';
-import { saveOrganization } from './organization';
+import { saveOrganization } from '../db/models/baseline/organizations';
 import { getContractJson } from './contract';
 
 export const subscribeRegisterOrgEvent = async () => {
